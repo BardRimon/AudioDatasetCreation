@@ -1,0 +1,23 @@
+# Virtual environments
+venv/
+env/
+.env
+
+# Python compilation files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Audio and Data files (don't push heavy datasets to GitHub)
+recordings/
+all_rec/
+test_data/
+*.wav
+*.mp3
+*.json
+*.txt
+
+# IDEs
+.idea/
+.vscode/
+*.swp
