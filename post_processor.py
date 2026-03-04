@@ -38,9 +38,10 @@ def process_audio(input_file, output_file, target_freq=10000, target_sr=16000):
                 env = np.convolve(np.abs(filtered), np.ones(window_shape)/window_shape, mode='same')
                 # Threshold to detect the 15kHz tone (20% of the max expected envelope if it's prominent)
                 max_amp = np.max(env)
+                
                 # If the max isn't significant it might just be noise
-                if max_amp > 0.01: 
-                    threshold = max_amp * 0.2
+                if max_amp > 0.0001: 
+                    threshold = max_amp * 0.1
                     start_idx = np.argmax(env > threshold)
                     
         if start_idx == 0:
