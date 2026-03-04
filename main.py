@@ -6,6 +6,7 @@ import os
 import threading
 import re
 import sounddevice as sd
+import random
 from audio_engine import AudioEngine
 
 class DatasetApp:
@@ -20,6 +21,7 @@ class DatasetApp:
         self.tone_played_time = None
         self.timestamps = []
         self.current_filename = ""
+        self.selected_texts_ids = []
         
         # UI Setup
         self._setup_ui()
@@ -51,7 +53,18 @@ class DatasetApp:
         
         self.text_widget = scrolledtext.ScrolledText(mid_frame, wrap=tk.WORD, font=("Arial", 14))
         self.text_widget.pack(fill=tk.BOTH, expand=True)
-        self.text_widget.insert(tk.END, "Please load a text file or type your text here to read during recording...")
+        
+        try:
+            with open("safety_texts.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+            items = list(data.items())
+            selected = random.sample(items, min(5, len(items)))
+            self.selected_texts_ids = [k for k, v in selected]
+            initial_text = "\n---\n".join(f"Текст №{k}:\n{v}" for k, v in selected)
+        except Exception as e:
+            initial_text = f"Не удалось загрузить safety_texts.json: {e}\n\nПоместите файл рядом со скриптом."
+            
+        self.text_widget.insert(tk.END, initial_text)
         
         # Bottom frame for controls
         bottom_frame = tk.Frame(self.root)
@@ -61,7 +74,7 @@ class DatasetApp:
         row1 = tk.Frame(bottom_frame)
         row1.pack(fill=tk.X, pady=5)
         
-        self.btn_start = tk.Button(row1, text="Start Recording [R]", command=self.start_recording, bg="lightgreen", font=("Arial", 12))
+        self.btn_start = tk.Button(row1, text="Start Recording", command=self.start_recording, bg="lightgreen", font=("Arial", 12))
         self.btn_start.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
         
         self.btn_stop = tk.Button(row1, text="Stop Recording [Enter]", command=self.stop_recording, bg="salmon", font=("Arial", 12), state=tk.DISABLED)
@@ -71,7 +84,7 @@ class DatasetApp:
         row2 = tk.Frame(bottom_frame)
         row2.pack(fill=tk.X, pady=5)
         
-        self.btn_tone = tk.Button(row2, text="Play HF Tone [S]", command=self.play_tone, bg="lightblue", font=("Arial", 12))
+        self.btn_tone = tk.Button(row2, text="Play HF Tone", command=self.play_tone, bg="lightblue", font=("Arial", 12))
         self.btn_tone.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
         
         self.btn_mark = tk.Button(row2, text="Mark Timestamp [Space]", command=self.mark_timestamp, bg="yellow", font=("Arial", 12), state=tk.DISABLED)
@@ -91,10 +104,7 @@ class DatasetApp:
                     func()
             return handler
             
-        self.root.bind('<r>', make_handler(self.btn_start, self.start_recording))
-        self.root.bind('<R>', make_handler(self.btn_start, self.start_recording))
-        self.root.bind('<s>', make_handler(self.btn_tone, self.play_tone))
-        self.root.bind('<S>', make_handler(self.btn_tone, self.play_tone))
+
         self.root.bind('<space>', make_handler(self.btn_mark, self.mark_timestamp))
         self.root.bind('<Return>', make_handler(self.btn_stop, self.stop_recording))
         
@@ -113,22 +123,13 @@ class DatasetApp:
         if self.recording:
             return
             
-        try:
-            device_info = sd.query_devices(sd.default.device[0])
-            mic_name = device_info.get('name', 'UnknownMic')
-        except:
-            mic_name = "UnknownMic"
-            
-        # Clean mic name for filename
-        mic_name = re.sub(r'[\\/*?:"<>|]', "", mic_name)
-        mic_name = mic_name.replace(" ", "_")
-        
         name_val = self.entry_name.get().strip() or "Name"
         id_val = self.entry_id.get().strip() or "ID"
         
-        date_str = time.strftime("%Y-%m-%d")
+        date_str = time.strftime("%Y-%m-%d_%H-%M-%S")
+        texts_str = "-".join(f"{int(k):02d}" for k in self.selected_texts_ids)
         
-        filename = f"case_{date_str}_MIC_{mic_name}_{name_val}_Health_{id_val}.wav"
+        filename = f"case_{date_str}_{name_val}_{id_val}_{texts_str}.wav"
         self.current_filename = os.path.join("recordings", filename)
         
         try:
