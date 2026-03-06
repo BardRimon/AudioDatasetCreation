@@ -63,7 +63,7 @@ class AudioEngine:
             self.file.close()
             self.file = None
 
-    def play_hf_tone(self, frequency=10000, duration=0.5):
+    def play_hf_tone(self, frequency=7500, duration=0.5):
         """Generates and plays a high-frequency sine wave asynchronously."""
         # Using 44100 for playback specifically
         playback_sr = 44100

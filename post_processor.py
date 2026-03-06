@@ -3,7 +3,7 @@ import soundfile as sf
 import scipy.signal as signal
 from math import gcd
 
-def process_audio(input_file, output_file, target_freq=10000, target_sr=16000):
+def process_audio(input_file, output_file, target_freq=7500, target_sr=16000):
     """
     Processes an audio file:
     1. Loads the audio.
@@ -23,12 +23,12 @@ def process_audio(input_file, output_file, target_freq=10000, target_sr=16000):
         # 2. Find the tone
         # Design a narrow bandpass filter around target_freq
         nyq = 0.5 * sr
-        low = (target_freq - 500) / nyq
-        high = (target_freq + 500) / nyq
+        low = max(0.01, (target_freq - 500) / nyq)
+        high = min(0.99, (target_freq + 500) / nyq)
         
-        # Check if Nyquist allows this frequency
+        # Check if bounds are valid
         start_idx = 0
-        if high < 1.0:
+        if low < high:
             b, a = signal.butter(5, [low, high], btype='band')
             filtered = signal.filtfilt(b, a, data)
             
@@ -36,15 +36,18 @@ def process_audio(input_file, output_file, target_freq=10000, target_sr=16000):
             window_shape = int(sr * 0.01)
             if window_shape > 0:
                 env = np.convolve(np.abs(filtered), np.ones(window_shape)/window_shape, mode='same')
-                # Threshold to detect the 15kHz tone (20% of the max expected envelope if it's prominent)
+                # Threshold to detect the tone (10% of the max expected envelope if it's prominent)
                 max_amp = np.max(env)
                 
                 # If the max isn't significant it might just be noise
                 if max_amp > 0.0001: 
                     threshold = max_amp * 0.1
-                    start_idx = np.argmax(env > threshold)
+                    # np.argmax returns the first index where condition is True
+                    detected_idx = np.argmax(env > threshold)
+                    if detected_idx > 0 or env[0] > threshold:
+                        start_idx = detected_idx
                     
-        if start_idx == 0:
+        if start_idx == 0 and not (env[0] > threshold if 'env' in locals() and 'threshold' in locals() else False):
             print(f"Warning: Tone of {target_freq} Hz not clearly found in {input_file}. Trimming skipped.")
              
         # 3. Trim
